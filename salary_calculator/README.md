@@ -55,6 +55,32 @@ If the pair is not supported, the tool returns an error such as:
 Unsupported currency pair: XXX-YYY
 ```
 
+## Daily API Limit Tracking
+
+AwesomeAPI has a daily request limit of `100` requests. The tool tracks usage per day and enforces this limit before each API request.
+
+Warnings shown when remaining quota is low:
+
+```text
+25 requests remaining
+10 requests remaining
+5 requests remaining
+1 requests remaining
+```
+
+When the limit is reached:
+
+```text
+Requests limit reached
+```
+
+In this case, execution stops immediately.
+
+Usage tracking storage:
+
+- Default file: `~/.salary_calculator_api_usage`
+- Optional override env var: `SALARY_CALCULATOR_USAGE_FILE`
+
 ## Examples
 
 ```bash
@@ -110,8 +136,15 @@ Invalid value for --from. Use only letters and digits (example: USD, BRL, BRLT, 
 Unsupported currency pair: FROM-TO
 ```
 
+- Daily quota reached:
+
+```text
+Requests limit reached
+```
+
 ## Notes
 
 - The hourly rate is interpreted in the `--from` currency.
 - Network access is required to validate pairs and fetch exchange rates.
+- API request quota is tracked per local day (`YYYY-MM-DD`) and resets automatically on the next day.
 - API provider: [AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas)
