@@ -56,7 +56,14 @@ main (int argc, char *argv[])
     }
   else
     {
-      rh_write_output_file (output_filename, &response);
+      if (output_filename != NULL)
+        {
+          rh_write_output_file (output_filename, &response);
+        }
+      else
+        {
+          rh_write_output_stream (stdout, &response);
+        }
     }
 
   rh_response_free (&response);

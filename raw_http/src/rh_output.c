@@ -4,6 +4,13 @@
 
 #include <stdio.h>
 
+void
+rh_write_output_stream (FILE *stream, const HttpResponse *response)
+{
+  fprintf (stream, "%s\n", response->headers);
+  fprintf (stream, "%s", response->body);
+}
+
 int
 rh_write_output_file (const char *output_filename, const HttpResponse *response)
 {
@@ -18,8 +25,7 @@ rh_write_output_file (const char *output_filename, const HttpResponse *response)
       return 0;
     }
 
-  fprintf (output_file, "%s\n", response->headers);
-  fprintf (output_file, "%s", response->body);
+  rh_write_output_stream (output_file, response);
   fclose (output_file);
 
   return 1;

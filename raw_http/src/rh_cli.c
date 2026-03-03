@@ -9,17 +9,17 @@ rh_parse_cli_arguments (int argc, char *argv[], const char **input_filename,
                         const char **output_filename,
                         const char *program_name)
 {
-  if (argc != 3)
+  if (argc < 2 || argc > 3)
     {
       fprintf (
           stderr,
-          RH_COLOR_ERROR "Usage: %s <input_file.txt> <output_file.txt>"
+          RH_COLOR_ERROR "Usage: %s <input_file.txt> [output_file.txt]"
                          RH_COLOR_RESET "\n",
           program_name);
       return RH_CLI_PARSE_ERROR;
     }
 
   *input_filename = argv[1];
-  *output_filename = argv[2];
+  *output_filename = argc == 3 ? argv[2] : NULL;
   return RH_CLI_PARSE_OK;
 }
