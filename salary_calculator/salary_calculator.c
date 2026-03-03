@@ -1,12 +1,34 @@
 #include <curl/curl.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#define API_BASE_URL "https://economia.awesomeapi.com.br/json"
+#define DEFAULT_FROM "USD"
+#define DEFAULT_TO "BRL"
+#define MAX_CURRENCY_CODE 16
+#define REQUEST_CONNECT_TIMEOUT_MS 5000L
+#define REQUEST_TIMEOUT_MS 10000L
+
 const char *BLUE = "\033[1;34m";
 const char *YELLOW = "\033[1;33m";
 const char *GREEN = "\033[1;32m";
+
+enum CliParseStatus
+{
+  CLI_PARSE_OK = 0,
+  CLI_PARSE_SHOW_HELP,
+  CLI_PARSE_ERROR
+};
+
+enum PairValidationStatus
+{
+  PAIR_VALID = 0,
+  PAIR_INVALID,
+  PAIR_CHECK_ERROR
+};
 
 struct MemoryStruct
 {
@@ -30,7 +52,7 @@ WriteMemoryCallback (void *contents, size_t size, size_t nmemb, void *userp)
   mem->memory = ptr;
   memcpy (&(mem->memory[mem->size]), contents, realsize);
   mem->size += realsize;
-  mem->memory[mem->size] = 0;
+  mem->memory[mem->size] = '\0';
 
   return realsize;
 }
@@ -38,7 +60,9 @@ WriteMemoryCallback (void *contents, size_t size, size_t nmemb, void *userp)
 void
 print_usage (FILE *stream, const char *program_name)
 {
-  fprintf (stream, "Usage: %s [--help] <hourly_rate> <hours:minutes:seconds>\n",
+  fprintf (stream,
+           "Usage: %s [--from CODE] [--to CODE] [--help] <hourly_rate> "
+           "<hours:minutes:seconds>\n",
            program_name);
 }
 
@@ -55,75 +79,218 @@ print_help (const char *program_name)
   printf ("\n");
   printf ("Flags:\n");
   printf ("  -h, --help               Show this help message.\n");
+  printf ("  --from CODE              Source currency (default: %s).\n",
+          DEFAULT_FROM);
+  printf ("  --to CODE                Target currency (default: %s).\n",
+          DEFAULT_TO);
+  printf ("\n");
+  printf ("Currency pairs are validated against AwesomeAPI supported pairs.\n");
+  printf ("Reference list: %s/available\n", API_BASE_URL);
   printf ("\n");
   printf ("Examples:\n");
   printf ("  %s 25 08:30:45\n", program_name);
+  printf ("  %s --from EUR --to USD 40 07:15:00\n", program_name);
+  printf ("  %s --from BTC --to BRL 0.005 01:00:00\n", program_name);
 }
 
-double
-get_exchange_rate (void)
+int
+normalize_currency_code (const char *input, char *output, size_t output_size)
 {
-  CURL *curl_handle;
-  CURLcode res;
-  struct MemoryStruct chunk;
+  size_t i;
+  size_t input_length;
 
-  chunk.memory = malloc (1);
-  if (chunk.memory == NULL)
+  if (input == NULL || output == NULL || output_size < 2)
+    {
+      return 0;
+    }
+
+  input_length = strlen (input);
+  if (input_length < 3 || input_length >= output_size)
+    {
+      return 0;
+    }
+
+  for (i = 0; i < input_length; i++)
+    {
+      unsigned char ch = (unsigned char)input[i];
+      if (!isalnum (ch))
+        {
+          return 0;
+        }
+      output[i] = (char)toupper (ch);
+    }
+
+  output[input_length] = '\0';
+  return 1;
+}
+
+int
+fetch_url (const char *url, struct MemoryStruct *chunk, long *http_code)
+{
+  CURL *curl_handle = NULL;
+  CURLcode res;
+  long response_code = 0;
+  int global_initialized = 0;
+  int success = 0;
+
+  chunk->memory = malloc (1);
+  if (chunk->memory == NULL)
     {
       fprintf (stderr, "Not enough memory to allocate\n");
-      return 0.0;
+      return 0;
     }
-  chunk.size = 0;
+  chunk->size = 0;
 
   if (curl_global_init (CURL_GLOBAL_ALL) != CURLE_OK)
     {
       fprintf (stderr, "curl_global_init() failed\n");
-      free (chunk.memory);
-      return 0.0;
+      goto cleanup;
     }
+  global_initialized = 1;
 
   curl_handle = curl_easy_init ();
   if (curl_handle == NULL)
     {
       fprintf (stderr, "curl_easy_init() failed\n");
-      free (chunk.memory);
-      curl_global_cleanup ();
-      return 0.0;
+      goto cleanup;
     }
 
-  curl_easy_setopt (curl_handle, CURLOPT_URL,
-                    "https://economia.awesomeapi.com.br/json/last/USD-BRL");
+  curl_easy_setopt (curl_handle, CURLOPT_URL, url);
   curl_easy_setopt (curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-  curl_easy_setopt (curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
-  curl_easy_setopt (curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+  curl_easy_setopt (curl_handle, CURLOPT_WRITEDATA, (void *)chunk);
+  curl_easy_setopt (curl_handle, CURLOPT_USERAGENT, "salary-calculator/1.0");
+  curl_easy_setopt (curl_handle, CURLOPT_CONNECTTIMEOUT_MS,
+                    REQUEST_CONNECT_TIMEOUT_MS);
+  curl_easy_setopt (curl_handle, CURLOPT_TIMEOUT_MS, REQUEST_TIMEOUT_MS);
 
   res = curl_easy_perform (curl_handle);
-  double exchange_rate = 0.0;
-
   if (res != CURLE_OK)
     {
       fprintf (stderr, "curl_easy_perform() failed: %s\n",
                curl_easy_strerror (res));
+      goto cleanup;
+    }
+
+  if (curl_easy_getinfo (curl_handle, CURLINFO_RESPONSE_CODE, &response_code)
+      != CURLE_OK)
+    {
+      fprintf (stderr, "Failed to get HTTP status code\n");
+      goto cleanup;
+    }
+
+  if (response_code < 200 || response_code >= 300)
+    {
+      fprintf (stderr, "Exchange API returned HTTP status %ld\n", response_code);
+      goto cleanup;
+    }
+
+  success = 1;
+
+cleanup:
+  if (curl_handle != NULL)
+    {
+      curl_easy_cleanup (curl_handle);
+    }
+  if (global_initialized)
+    {
+      curl_global_cleanup ();
+    }
+
+  if (!success)
+    {
+      free (chunk->memory);
+      chunk->memory = NULL;
+      chunk->size = 0;
+    }
+
+  if (http_code != NULL)
+    {
+      *http_code = response_code;
+    }
+
+  return success;
+}
+
+enum PairValidationStatus
+validate_currency_pair (const char *from_currency, const char *to_currency)
+{
+  struct MemoryStruct chunk;
+  char pair_pattern[(MAX_CURRENCY_CODE * 2) + 4];
+  enum PairValidationStatus status = PAIR_CHECK_ERROR;
+
+  if (!fetch_url (API_BASE_URL "/available", &chunk, NULL))
+    {
+      return PAIR_CHECK_ERROR;
+    }
+
+  snprintf (pair_pattern, sizeof (pair_pattern), "\"%s-%s\"", from_currency,
+            to_currency);
+
+  if (strstr (chunk.memory, pair_pattern) != NULL)
+    {
+      status = PAIR_VALID;
     }
   else
     {
-      char *start = strstr (chunk.memory, "\"bid\":\"");
-      if (start)
-        {
-          start += 7;
-          exchange_rate = strtod (start, NULL);
-        }
-      else
-        {
-          fprintf (stderr, "Failed to find exchange rate in response\n");
-        }
+      status = PAIR_INVALID;
     }
 
-  curl_easy_cleanup (curl_handle);
   free (chunk.memory);
-  curl_global_cleanup ();
+  return status;
+}
 
-  return exchange_rate;
+int
+extract_exchange_rate (const char *response_body, double *exchange_rate)
+{
+  char *start;
+  char *endptr;
+  double parsed_value;
+
+  start = strstr (response_body, "\"bid\":\"");
+  if (start == NULL)
+    {
+      return 0;
+    }
+  start += 7;
+
+  errno = 0;
+  parsed_value = strtod (start, &endptr);
+  if (errno != 0 || endptr == start)
+    {
+      return 0;
+    }
+
+  *exchange_rate = parsed_value;
+  return 1;
+}
+
+int
+get_exchange_rate (const char *from_currency, const char *to_currency,
+                   double *exchange_rate)
+{
+  struct MemoryStruct chunk;
+  char url[256];
+  int success = 0;
+
+  snprintf (url, sizeof (url), API_BASE_URL "/last/%s-%s", from_currency,
+            to_currency);
+
+  if (!fetch_url (url, &chunk, NULL))
+    {
+      return 0;
+    }
+
+  if (!extract_exchange_rate (chunk.memory, exchange_rate))
+    {
+      fprintf (stderr, "Failed to parse exchange rate from API response\n");
+      goto cleanup;
+    }
+
+  success = 1;
+
+cleanup:
+  free (chunk.memory);
+  return success;
 }
 
 double
@@ -174,27 +341,164 @@ parse_hourly_rate (const char *hourly_rate_str, double *hourly_rate)
 }
 
 int
+parse_currency_value (const char *option_name, const char *value,
+                      char *output_currency, size_t output_size)
+{
+  if (!normalize_currency_code (value, output_currency, output_size))
+    {
+      fprintf (
+          stderr,
+          "\033[1;31mInvalid value for %s. Use only letters and digits "
+          "(example: USD, BRL, BRLT, BTC).\033[0m\n",
+          option_name);
+      return 0;
+    }
+
+  return 1;
+}
+
+enum CliParseStatus
+parse_cli_arguments (int argc, char *argv[], char *from_currency,
+                     size_t from_size, char *to_currency, size_t to_size,
+                     const char **hourly_rate_arg, const char **time_arg,
+                     const char *program_name)
+{
+  int index;
+  int positional_count = 0;
+
+  snprintf (from_currency, from_size, "%s", DEFAULT_FROM);
+  snprintf (to_currency, to_size, "%s", DEFAULT_TO);
+
+  *hourly_rate_arg = NULL;
+  *time_arg = NULL;
+
+  for (index = 1; index < argc; index++)
+    {
+      const char *argument = argv[index];
+
+      if (strcmp (argument, "-h") == 0 || strcmp (argument, "--help") == 0)
+        {
+          return CLI_PARSE_SHOW_HELP;
+        }
+
+      if (strcmp (argument, "--from") == 0)
+        {
+          if (index + 1 >= argc)
+            {
+              fprintf (stderr,
+                       "\033[1;31mMissing value for --from option.\033[0m\n");
+              return CLI_PARSE_ERROR;
+            }
+          if (!parse_currency_value ("--from", argv[++index], from_currency,
+                                     from_size))
+            {
+              return CLI_PARSE_ERROR;
+            }
+          continue;
+        }
+
+      if (strncmp (argument, "--from=", 7) == 0)
+        {
+          if (!parse_currency_value ("--from", argument + 7, from_currency,
+                                     from_size))
+            {
+              return CLI_PARSE_ERROR;
+            }
+          continue;
+        }
+
+      if (strcmp (argument, "--to") == 0)
+        {
+          if (index + 1 >= argc)
+            {
+              fprintf (stderr,
+                       "\033[1;31mMissing value for --to option.\033[0m\n");
+              return CLI_PARSE_ERROR;
+            }
+          if (!parse_currency_value ("--to", argv[++index], to_currency,
+                                     to_size))
+            {
+              return CLI_PARSE_ERROR;
+            }
+          continue;
+        }
+
+      if (strncmp (argument, "--to=", 5) == 0)
+        {
+          if (!parse_currency_value ("--to", argument + 5, to_currency,
+                                     to_size))
+            {
+              return CLI_PARSE_ERROR;
+            }
+          continue;
+        }
+
+      if (strncmp (argument, "--", 2) == 0)
+        {
+          fprintf (stderr, "\033[1;31mUnknown option: %s\033[0m\n", argument);
+          return CLI_PARSE_ERROR;
+        }
+
+      if (positional_count == 0)
+        {
+          *hourly_rate_arg = argument;
+          positional_count++;
+          continue;
+        }
+
+      if (positional_count == 1)
+        {
+          *time_arg = argument;
+          positional_count++;
+          continue;
+        }
+
+      fprintf (stderr, "\033[1;31mToo many positional arguments.\033[0m\n");
+      return CLI_PARSE_ERROR;
+    }
+
+  if (positional_count != 2)
+    {
+      fprintf (stderr, "\033[1;31m");
+      print_usage (stderr, program_name);
+      fprintf (stderr, "\033[0m");
+      return CLI_PARSE_ERROR;
+    }
+
+  return CLI_PARSE_OK;
+}
+
+int
 main (int argc, char *argv[])
 {
-  if (argc == 2
-      && (strcmp (argv[1], "--help") == 0 || strcmp (argv[1], "-h") == 0))
+  const char *hourly_rate_arg;
+  const char *time_arg;
+  char from_currency[MAX_CURRENCY_CODE];
+  char to_currency[MAX_CURRENCY_CODE];
+  enum CliParseStatus cli_status;
+  enum PairValidationStatus pair_status;
+  double hourly_rate;
+  int hours, minutes, seconds;
+  double total_earned_from_currency;
+  double exchange_rate;
+  double total_earned_to_currency;
+
+  cli_status = parse_cli_arguments (argc, argv, from_currency,
+                                    sizeof (from_currency), to_currency,
+                                    sizeof (to_currency), &hourly_rate_arg,
+                                    &time_arg, argv[0]);
+  if (cli_status == CLI_PARSE_SHOW_HELP)
     {
       print_help (argv[0]);
       return 0;
     }
 
-  if (argc != 3)
+  if (cli_status == CLI_PARSE_ERROR)
     {
-      fprintf (stderr, "\033[1;31m");
-      print_usage (stderr, argv[0]);
-      fprintf (stderr, "\033[0m");
       return 1;
     }
 
-  double hourly_rate;
-  int hours, minutes, seconds;
-
-  if (!parse_hourly_rate (argv[1], &hourly_rate))
+  if (!parse_hourly_rate (hourly_rate_arg, &hourly_rate))
     {
       fprintf (stderr,
                "\033[1;31mInvalid hourly rate. Use a non-negative number.\033"
@@ -202,7 +506,7 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  if (!parse_time (argv[2], &hours, &minutes, &seconds))
+  if (!parse_time (time_arg, &hours, &minutes, &seconds))
     {
       fprintf (
           stderr,
@@ -211,23 +515,43 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  double total_earned_usd
-      = calculate_payment (hours, minutes, seconds, hourly_rate);
-  double exchange_rate = get_exchange_rate ();
-  if (exchange_rate == 0.0)
+  pair_status = validate_currency_pair (from_currency, to_currency);
+  if (pair_status == PAIR_CHECK_ERROR)
     {
-      fprintf (stderr, "Failed to retrieve exchange rate\n");
+      fprintf (stderr,
+               "\033[1;31mFailed to validate currency pair against "
+               "AwesomeAPI.\033[0m\n");
       return 1;
     }
-  double total_earned_brl = total_earned_usd * exchange_rate;
+
+  if (pair_status == PAIR_INVALID)
+    {
+      fprintf (stderr, "\033[1;31mUnsupported currency pair: %s-%s\033[0m\n",
+               from_currency, to_currency);
+      return 1;
+    }
+
+  total_earned_from_currency
+      = calculate_payment (hours, minutes, seconds, hourly_rate);
+
+  if (!get_exchange_rate (from_currency, to_currency, &exchange_rate))
+    {
+      fprintf (stderr, "\033[1;31mFailed to retrieve exchange rate.\033[0m\n");
+      return 1;
+    }
+
+  total_earned_to_currency = total_earned_from_currency * exchange_rate;
 
   printf ("%sTotal hours worked:\033[0m %.2f hours\n", BLUE,
           (double)hours + (minutes / 60.0) + (seconds / 3600.0));
-  printf ("%sHourly wage:\033[0m $%.2f\n", BLUE, hourly_rate);
-  printf ("%sDollar exchange rate:\033[0m R$%.2f\n", YELLOW, exchange_rate);
-  printf ("%sTotal earned in dollars:\033[0m $%.2f\n", YELLOW,
-          total_earned_usd);
-  printf ("%sTotal earned in reais:\033[0m R$%.2f\n", GREEN, total_earned_brl);
+  printf ("%sHourly wage (%s):\033[0m %.6f %s\n", BLUE, from_currency,
+          hourly_rate, from_currency);
+  printf ("%sExchange rate (%s -> %s):\033[0m %.6f\n", YELLOW, from_currency,
+          to_currency, exchange_rate);
+  printf ("%sTotal earned in %s:\033[0m %.6f %s\n", YELLOW, from_currency,
+          total_earned_from_currency, from_currency);
+  printf ("%sTotal earned in %s:\033[0m %.6f %s\n", GREEN, to_currency,
+          total_earned_to_currency, to_currency);
 
   return 0;
 }
