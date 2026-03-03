@@ -1,23 +1,22 @@
-# Currency Converter Pay Calculator
+# Salary Calculator
 
 ## Overview
 
-This C program leverages the power of libcurl to fetch real-time exchange rates, specifically between USD and BRL (Brazilian Real). It calculates the total payment due in both USD and BRL for a given time worked, expressed as hours, minutes, and seconds, based on an hourly rate.
+`salary_calculator` computes payment from an hourly rate and worked time (`HH:MM:SS`), then converts the result between currencies using AwesomeAPI exchange rates.
 
 ## Features
 
-- **Real-time Currency Conversion**: Fetches live exchange rates to ensure accurate conversion between USD and BRL.
-- **Custom Time Input**: Allows users to input time in a flexible `HH:MM:SS` format.
-- **Dynamic Memory Management**: Utilizes dynamic memory allocation to handle web data fetching and parsing.
+- Help and usage output with `-h` / `--help`
+- Strict input validation for hourly rate and time format
+- Dynamic currency conversion with `--from` and `--to`
+- Currency pair validation against AwesomeAPI supported pairs
 
 ## Prerequisites
 
-Before running this program, ensure that you have the following installed on your system:
-
 - GCC (GNU Compiler Collection)
-- libcurl (C library for transferring data with URLs)
+- libcurl
 
-## Compile
+## Build
 
 ```bash
 make build
@@ -25,19 +24,73 @@ make build
 
 ## Usage
 
-To use the program, run it from the command line by providing the hourly rate and the time worked as arguments:
-
 ```bash
-./salary_calculator <hourly_rate> <hours:minutes:seconds>
+./salary_calculator [--from CODE] [--to CODE] <hourly_rate> <hours:minutes:seconds>
 ```
 
-## Example
-```bash
-./salary_calculator 25.00 8:30:45
+### Arguments
+
+- `<hourly_rate>`: Non-negative decimal number
+- `<hours:minutes:seconds>`: Time worked in `HH:MM:SS` where `MM` and `SS` are between `00` and `59`
+
+### Options
+
+- `-h`, `--help`: Show help message
+- `--from CODE`: Source currency code (default: `USD`)
+- `--to CODE`: Target currency code (default: `BRL`)
+
+Both `--from EUR` and `--from=EUR` styles are supported.
+
+## Currency Pair Validation
+
+The tool validates `FROM-TO` against AwesomeAPI available pairs before fetching rates.
+
+- Supported pairs source: `https://economia.awesomeapi.com.br/json/available`
+- Rate endpoint used by the tool: `https://economia.awesomeapi.com.br/json/last/FROM-TO`
+
+If the pair is not supported, the tool returns an error such as:
+
+```text
+Unsupported currency pair: XXX-YYY
 ```
 
-This command calculates the payment for 8 hours, 30 minutes, and 45 seconds at a rate of $25.00 per hour, converting the total from USD to BRL using the current exchange rate.
+## Examples
 
-## Acknowledgements
+```bash
+./salary_calculator 25 08:30:45
+./salary_calculator --from EUR --to USD 40 07:15:00
+./salary_calculator --from BTC --to BRL 0.005 01:00:00
+./salary_calculator --from=BRL --to=EUR 35 06:45:30
+```
 
-[AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas) for providing exchange rate APIs.
+## Common Errors
+
+- Invalid hourly rate:
+
+```text
+Invalid hourly rate. Use a non-negative number.
+```
+
+- Invalid time format:
+
+```text
+Invalid time format. Use HH:MM:SS with MM/SS between 00 and 59.
+```
+
+- Invalid currency code format:
+
+```text
+Invalid value for --from. Use only letters and digits (example: USD, BRL, BRLT, BTC).
+```
+
+- Unsupported pair:
+
+```text
+Unsupported currency pair: FROM-TO
+```
+
+## Notes
+
+- The hourly rate is interpreted in the `--from` currency.
+- Network access is required to validate pairs and fetch exchange rates.
+- API provider: [AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas)
