@@ -160,3 +160,10 @@ Requests limit reached
 - Network access is required to validate pairs and fetch exchange rates.
 - API request quota is tracked per local day (`YYYY-MM-DD`) and resets automatically on the next day.
 - API provider: [AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas)
+
+## License
+
+This project is licensed under the Apache License 2.0.
+
+- Commercial and non-commercial use, modification, and redistribution are allowed under the license terms.
+- Full terms: [../LICENSE](../LICENSE)

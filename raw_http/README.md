@@ -101,3 +101,10 @@ Public contracts for these modules are in `include/`.
 ## Acknowledgements
 
 [libcurl](https://curl.se/libcurl/) for providing a powerful library.
+
+## License
+
+This project is licensed under the Apache License 2.0.
+
+- Commercial and non-commercial use, modification, and redistribution are allowed under the license terms.
+- Full terms: [../LICENSE](../LICENSE)
