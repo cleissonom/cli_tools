@@ -63,6 +63,7 @@ main (int argc, char *argv[])
       else
         {
           rh_write_output_stream (stdout, &response);
+          printf ("\n");
         }
     }
 
