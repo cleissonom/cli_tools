@@ -1,0 +1,16 @@
+#ifndef RH_CONFIG_H
+#define RH_CONFIG_H
+
+#define RH_METHOD_SIZE 10
+#define RH_PATH_SIZE 1024
+#define RH_VERSION_SIZE 10
+#define RH_HOST_SIZE 1024
+#define RH_HEADERS_SIZE 4096
+#define RH_BODY_SIZE 4096
+#define RH_URL_SIZE 2048
+
+#define RH_COLOR_ERROR "\033[1;31m"
+#define RH_COLOR_SUCCESS "\033[1;32m"
+#define RH_COLOR_RESET "\033[0m"
+
+#endif

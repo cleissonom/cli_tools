@@ -2,38 +2,45 @@
 
 ## Overview
 
-This C program leverages the power of libcurl to send raw HTTP requests configured from a `.txt` file. It supports GET, POST, PUT, DELETE, PATCH, OPTIONS, and HEAD methods and saves the complete response, including headers and body, to a specified output file.
+This C program uses libcurl to send raw HTTP requests configured from a `.txt` file. It supports `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `OPTIONS`, and `HEAD`, and saves the complete response (headers + body) to an output file.
+
+The project now follows a modular layout similar to `salary_calculator`:
+
+- `include/` for module contracts
+- `src/` for implementations
+- `tests/` for parser-focused regression checks
 
 ## Features
 
-- **Raw HTTP Request Configuration**: Configure HTTP requests in a `.txt` file, specifying the method, path, HTTP version, host, headers, and body.
-- **Complete Response Capture**: Captures and saves the complete HTTP response, including headers and body, to an output file.
-- **Host Validation**: Automatically adds `http://` to the host if it is not present.
+- **Raw HTTP Request Configuration**: Configure method, path, HTTP version, host, headers, and body via text file.
+- **Complete Response Capture**: Saves full response headers and body.
+- **Host Validation**: Adds `http://` when host does not include a protocol.
 
 ## Prerequisites
 
-Before running this program, ensure that you have the following installed on your system:
+- GCC
+- libcurl
+- make
 
-- GCC (GNU Compiler Collection)
-- libcurl (C library for transferring data with URLs)
-
-## Compile
+## Build
 
 ```bash
-gcc -o raw_http raw_http.c -lcurl
+make build
 ```
 
-## Usage
-
-To use the program, run it from the command line by providing the input file with the raw HTTP request and the output file to save the response:
+## Run
 
 ```bash
 ./raw_http <input_file.txt> <output_file.txt>
 ```
 
-## Example
+## Run Tests
 
-Create a file named request_get.txt with the following content to perform a GET request:
+```bash
+make test
+```
+
+## Example Request File
 
 ```txt
 GET / HTTP/1.1
@@ -43,13 +50,11 @@ Accept: text/html
 Connection: close
 ```
 
-Run the tool:
+## Example
 
 ```bash
-./raw_http request_get.txt response_get.txt
+./raw_http example.txt response.txt
 ```
-
-This command sends the GET request specified in request_get.txt and saves the complete response to response_get.txt.
 
 ## Acknowledgements
 
