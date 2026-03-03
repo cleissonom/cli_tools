@@ -23,6 +23,18 @@
 make build
 ```
 
+## Project Structure
+
+The tool is split into focused modules under `src/` with public contracts in `include/`:
+
+- `src/main.c`: Application orchestration and output rendering
+- `src/sc_cli.c`: Help text and CLI argument parsing
+- `src/sc_parse.c`: Input parsing and normalization helpers
+- `src/sc_money.c`: Payment calculation and currency formatting
+- `src/sc_quota.c`: Daily API quota tracking
+- `src/sc_api.c`: HTTP requests, pair validation, and exchange rate retrieval
+- `src/sc_config.c`: Shared visual constants (output colors)
+
 ## Usage
 
 ```bash
