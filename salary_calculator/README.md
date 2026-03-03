@@ -10,6 +10,7 @@
 - Strict input validation for hourly rate and time format
 - Dynamic currency conversion with `--from` and `--to`
 - Currency pair validation against AwesomeAPI supported pairs
+- `Total earned` output formatted with currency symbol, thousands separators, and 2 decimal places
 
 ## Prerequisites
 
@@ -62,6 +63,26 @@ Unsupported currency pair: XXX-YYY
 ./salary_calculator --from BTC --to BRL 0.005 01:00:00
 ./salary_calculator --from=BRL --to=EUR 35 06:45:30
 ```
+
+Example output (USD -> BRL):
+
+```text
+Total earned in USD: $3,680.00
+Total earned in BRL: R$ 19.483,39
+```
+
+Example output (BRL -> USD):
+
+```text
+Total earned in BRL: R$ 3.680,00
+Total earned in USD: $691.01
+```
+
+Formatting notes:
+
+- Total earned lines are always rounded to 2 decimal places.
+- Symbol and separators follow the selected currency when known.
+- For unknown currency codes, fallback format is `1,234.56 CODE`.
 
 ## Common Errors
 
