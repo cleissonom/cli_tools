@@ -15,6 +15,7 @@ main (int argc, char *argv[])
   char to_currency[MAX_CURRENCY_CODE];
   enum CliParseStatus cli_status;
   enum PairValidationStatus pair_status;
+  enum ApiRequestStatus api_status;
   double hourly_rate;
   int hours, minutes, seconds;
   double total_earned_from_currency;
@@ -55,10 +56,11 @@ main (int argc, char *argv[])
       return 1;
     }
 
-  pair_status = validate_currency_pair (from_currency, to_currency);
+  pair_status
+      = validate_currency_pair (from_currency, to_currency, &api_status);
   if (pair_status == PAIR_CHECK_ERROR)
     {
-      if (api_quota_reached_error)
+      if (api_status == API_REQUEST_QUOTA_REACHED)
         {
           return 1;
         }
@@ -78,9 +80,10 @@ main (int argc, char *argv[])
   total_earned_from_currency
       = calculate_payment (hours, minutes, seconds, hourly_rate);
 
-  if (!get_exchange_rate (from_currency, to_currency, &exchange_rate))
+  api_status = get_exchange_rate (from_currency, to_currency, &exchange_rate);
+  if (api_status != API_REQUEST_OK)
     {
-      if (api_quota_reached_error)
+      if (api_status == API_REQUEST_QUOTA_REACHED)
         {
           return 1;
         }
