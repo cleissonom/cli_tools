@@ -1,4 +1,5 @@
 #include <curl/curl.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,8 +35,33 @@ WriteMemoryCallback (void *contents, size_t size, size_t nmemb, void *userp)
   return realsize;
 }
 
+void
+print_usage (FILE *stream, const char *program_name)
+{
+  fprintf (stream, "Usage: %s [--help] <hourly_rate> <hours:minutes:seconds>\n",
+           program_name);
+}
+
+void
+print_help (const char *program_name)
+{
+  print_usage (stdout, program_name);
+  printf ("\n");
+  printf ("Calculate earned amount based on worked time and hourly rate.\n");
+  printf ("\n");
+  printf ("Arguments:\n");
+  printf ("  <hourly_rate>            Non-negative decimal number.\n");
+  printf ("  <hours:minutes:seconds>  Time worked in HH:MM:SS format.\n");
+  printf ("\n");
+  printf ("Flags:\n");
+  printf ("  -h, --help               Show this help message.\n");
+  printf ("\n");
+  printf ("Examples:\n");
+  printf ("  %s 25 08:30:45\n", program_name);
+}
+
 double
-get_exchange_rate ()
+get_exchange_rate (void)
 {
   CURL *curl_handle;
   CURLcode res;
@@ -110,27 +136,78 @@ calculate_payment (int hours, int minutes, int seconds, double hourly_rate)
 int
 parse_time (const char *time_str, int *hours, int *minutes, int *seconds)
 {
-  return sscanf (time_str, "%d:%d:%d", hours, minutes, seconds);
+  char extra_char;
+  int parsed_items
+      = sscanf (time_str, "%d:%d:%d%c", hours, minutes, seconds, &extra_char);
+
+  if (parsed_items != 3)
+    {
+      return 0;
+    }
+
+  if (*hours < 0 || *minutes < 0 || *minutes > 59 || *seconds < 0
+      || *seconds > 59)
+    {
+      return 0;
+    }
+
+  return 1;
+}
+
+int
+parse_hourly_rate (const char *hourly_rate_str, double *hourly_rate)
+{
+  char *endptr;
+  double parsed_rate;
+
+  errno = 0;
+  parsed_rate = strtod (hourly_rate_str, &endptr);
+
+  if (errno != 0 || endptr == hourly_rate_str || *endptr != '\0'
+      || parsed_rate < 0.0)
+    {
+      return 0;
+    }
+
+  *hourly_rate = parsed_rate;
+  return 1;
 }
 
 int
 main (int argc, char *argv[])
 {
+  if (argc == 2
+      && (strcmp (argv[1], "--help") == 0 || strcmp (argv[1], "-h") == 0))
+    {
+      print_help (argv[0]);
+      return 0;
+    }
+
   if (argc != 3)
     {
-      fprintf (
-          stderr,
-          "\033[1;31mUsage: %s <hourly_rate> <hours:minutes:seconds>\033[0m\n",
-          argv[0]);
+      fprintf (stderr, "\033[1;31m");
+      print_usage (stderr, argv[0]);
+      fprintf (stderr, "\033[0m");
       return 1;
     }
 
-  double hourly_rate = atof (argv[1]);
+  double hourly_rate;
   int hours, minutes, seconds;
 
-  if (parse_time (argv[2], &hours, &minutes, &seconds) != 3)
+  if (!parse_hourly_rate (argv[1], &hourly_rate))
     {
-      fprintf (stderr, "\033[1;31mInvalid time format. Use HH:MM:SS\033[0m\n");
+      fprintf (stderr,
+               "\033[1;31mInvalid hourly rate. Use a non-negative number.\033"
+               "[0m\n");
+      return 1;
+    }
+
+  if (!parse_time (argv[2], &hours, &minutes, &seconds))
+    {
+      fprintf (
+          stderr,
+          "\033[1;31mInvalid time format. Use HH:MM:SS with MM/SS between 00 "
+          "and 59.\033[0m\n");
       return 1;
     }
 
