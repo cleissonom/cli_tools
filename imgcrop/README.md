@@ -7,7 +7,7 @@
 It supports:
 
 - required target size (`--size WIDTHxHEIGHT`),
-- optional `--input` path,
+- required positional input path (`<PATH>`),
 - optional proportion preservation (`--keep-proportion true|false`),
 - optional framing (`--frame-horizontal`, `--frame-vertical`),
 - optional `--output` path.
@@ -31,7 +31,7 @@ make test
 ## Usage
 
 ```bash
-./imgcrop --size <WIDTH>x<HEIGHT> [--input <PATH>] [--keep-proportion <true|false>] [--frame-horizontal <left|center|right>] [--frame-vertical <top|center|bottom>] [--output <PATH>]
+./imgcrop <PATH> --size <WIDTH>x<HEIGHT> [--keep-proportion <true|false>] [--frame-horizontal <left|center|right>] [--frame-vertical <top|center|bottom>] [--output <PATH>]
 ```
 
 ## Defaults
@@ -40,13 +40,7 @@ make test
 - `--frame-horizontal=center`
 - `--frame-vertical=center`
 
-## Input fallback when `--input` is omitted
-
-- If exactly one supported image exists in the current directory, `imgcrop` uses it.
-- If zero or multiple supported images exist, the command fails with an explicit error asking for `--input`.
-
-Supported extensions for fallback detection include:
-`png`, `jpg`, `jpeg`, `webp`, `gif`, `bmp`, `tiff`, `tif`, `ico`, `tga`.
+`<PATH>` must point to the input image file to crop.
 
 ## Output naming behavior
 
@@ -68,13 +62,13 @@ To prevent accidental overwrite, input and output collisions are rejected.
 
 ```bash
 # Auto output naming => ./photo.800x600.jpg
-./imgcrop --size 800x600 --input ./photo.jpg
+./imgcrop ./photo.jpg --size 800x600
 
 # Crop with framing controls while preserving proportion
-./imgcrop --size 800x600 --input ./banner.jpg --frame-horizontal right --frame-vertical top
+./imgcrop ./banner.jpg --size 800x600 --frame-horizontal right --frame-vertical top
 
 # Force non-proportional resize + explicit output
-./imgcrop --size 300x300 --input ./wide.png --keep-proportion false --output ./out/square.png
+./imgcrop ./wide.png --size 300x300 --keep-proportion false --output ./out/square.png
 ```
 
 ## Repository Workflow

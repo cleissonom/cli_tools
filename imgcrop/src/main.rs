@@ -8,7 +8,7 @@ use imgcrop::{
 #[derive(Debug)]
 struct CliArgs {
     size: Size,
-    input_path: Option<PathBuf>,
+    input_path: PathBuf,
     keep_proportion: bool,
     frame_horizontal: HorizontalFrame,
     frame_vertical: VerticalFrame,
@@ -43,7 +43,7 @@ fn main() {
 fn execute(args: CliArgs) -> Result<(), AppError> {
     let output_path = crop_image(CropRequest {
         size: args.size,
-        input_path: args.input_path.as_deref(),
+        input_path: Some(args.input_path.as_path()),
         keep_proportion: args.keep_proportion,
         frame_horizontal: args.frame_horizontal,
         frame_vertical: args.frame_vertical,
@@ -61,8 +61,24 @@ where
     let mut args = args.into_iter();
     let executable = args.next().unwrap_or_else(|| "imgcrop".to_string());
 
+    let input_raw = args.next().ok_or_else(|| {
+        ParseError::Message(
+            "missing required <PATH>. usage: imgcrop <PATH> --size <WIDTH>x<HEIGHT>".to_string(),
+        )
+    })?;
+
+    if matches!(input_raw.as_str(), "-h" | "--help") {
+        return Err(ParseError::Help(usage(&executable)));
+    }
+
+    if input_raw.starts_with('-') {
+        return Err(ParseError::Message(format!(
+            "expected <PATH> as first argument, found option: {input_raw}"
+        )));
+    }
+
+    let input_path = PathBuf::from(input_raw);
     let mut size = None;
-    let mut input_path = None;
     let mut keep_proportion = true;
     let mut keep_proportion_set = false;
     let mut frame_horizontal = HorizontalFrame::Center;
@@ -85,16 +101,6 @@ where
                 let parsed_size =
                     parse_size(&value).map_err(|error| ParseError::Message(error.to_string()))?;
                 size = Some(parsed_size);
-            }
-            "--input" => {
-                if input_path.is_some() {
-                    return Err(ParseError::Message(
-                        "--input provided more than once".to_string(),
-                    ));
-                }
-
-                let value = next_value(&mut args, "--input")?;
-                input_path = Some(PathBuf::from(value));
             }
             "--keep-proportion" => {
                 if keep_proportion_set {
@@ -146,7 +152,7 @@ where
             }
             _ => {
                 return Err(ParseError::Message(format!(
-                    "unexpected positional argument: {arg}. use --input <PATH>"
+                    "unexpected positional argument: {arg}. expected options after <PATH>"
                 )));
             }
         }
@@ -186,22 +192,19 @@ fn parse_bool(raw: &str) -> Result<bool, ParseError> {
 
 fn usage(executable: &str) -> String {
     format!(
-        "Usage: {executable} --size <WIDTH>x<HEIGHT> [--input <PATH>] [--keep-proportion <true|false>] [--frame-horizontal <left|center|right>] [--frame-vertical <top|center|bottom>] [--output <PATH>]\n\n\
+        "Usage: {executable} <PATH> --size <WIDTH>x<HEIGHT> [--keep-proportion <true|false>] [--frame-horizontal <left|center|right>] [--frame-vertical <top|center|bottom>] [--output <PATH>]\n\n\
 Crops an image to exact dimensions with deterministic output naming.\n\n\
 Defaults:\n\
   --keep-proportion true\n\
   --frame-horizontal center\n\
   --frame-vertical center\n\n\
-Input fallback when --input is omitted:\n\
-  - If exactly one supported image exists in the current directory, it is used.\n\
-  - If zero or multiple images exist, command fails and asks for --input.\n\n\
 Output naming when --output is omitted:\n\
   - Uses the input directory and template: {{name}}.{{width}}x{{height}}.{{extension}}\n\
   - Example: photo.jpg with --size 800x600 => photo.800x600.jpg\n\n\
 Examples:\n\
-  {executable} --size 800x600 --input ./photo.jpg\n\
-  {executable} --size 1200x800 --input ./photo.jpg --frame-horizontal right\n\
-  {executable} --size 300x300 --input ./wide.png --keep-proportion false --output ./out/square.png\n\n\
+  {executable} ./photo.jpg --size 800x600\n\
+  {executable} ./photo.jpg --size 1200x800 --frame-horizontal right\n\
+  {executable} ./wide.png --size 300x300 --keep-proportion false --output ./out/square.png\n\n\
 Options:\n\
   -h, --help  Show this message"
     )
@@ -216,6 +219,7 @@ mod tests {
     fn parse_args_accepts_defaults() {
         let args = vec![
             "imgcrop".to_string(),
+            "input.jpg".to_string(),
             "--size".to_string(),
             "800x600".to_string(),
         ];
@@ -224,7 +228,7 @@ mod tests {
 
         assert_eq!(parsed.size.width, 800);
         assert_eq!(parsed.size.height, 600);
-        assert!(parsed.input_path.is_none());
+        assert_eq!(parsed.input_path.to_string_lossy(), "input.jpg");
         assert!(parsed.keep_proportion);
         assert_eq!(parsed.frame_horizontal, HorizontalFrame::Center);
         assert_eq!(parsed.frame_vertical, VerticalFrame::Center);
@@ -235,10 +239,9 @@ mod tests {
     fn parse_args_accepts_all_supported_options() {
         let args = vec![
             "imgcrop".to_string(),
+            "input.jpg".to_string(),
             "--size".to_string(),
             "1024x768".to_string(),
-            "--input".to_string(),
-            "input.jpg".to_string(),
             "--keep-proportion".to_string(),
             "false".to_string(),
             "--frame-horizontal".to_string(),
@@ -253,13 +256,7 @@ mod tests {
 
         assert_eq!(parsed.size.width, 1024);
         assert_eq!(parsed.size.height, 768);
-        assert_eq!(
-            parsed
-                .input_path
-                .expect("input should be present")
-                .to_string_lossy(),
-            "input.jpg"
-        );
+        assert_eq!(parsed.input_path.to_string_lossy(), "input.jpg");
         assert!(!parsed.keep_proportion);
         assert_eq!(parsed.frame_horizontal, HorizontalFrame::Right);
         assert_eq!(parsed.frame_vertical, VerticalFrame::Bottom);
@@ -274,10 +271,17 @@ mod tests {
 
     #[test]
     fn parse_args_requires_size() {
+        let args = vec!["imgcrop".to_string(), "a.png".to_string()];
+        let parsed = parse_args(args);
+        assert!(matches!(parsed, Err(ParseError::Message(_))));
+    }
+
+    #[test]
+    fn parse_args_requires_path_first() {
         let args = vec![
             "imgcrop".to_string(),
-            "--input".to_string(),
-            "a.png".to_string(),
+            "--size".to_string(),
+            "800x600".to_string(),
         ];
         let parsed = parse_args(args);
         assert!(matches!(parsed, Err(ParseError::Message(_))));
@@ -315,6 +319,7 @@ mod tests {
     fn parse_args_rejects_unknown_option() {
         let args = vec![
             "imgcrop".to_string(),
+            "input.jpg".to_string(),
             "--size".to_string(),
             "800x600".to_string(),
             "--unknown".to_string(),
@@ -329,5 +334,19 @@ mod tests {
         let args = vec!["imgcrop".to_string(), "--help".to_string()];
         let parsed = parse_args(args);
         assert!(matches!(parsed, Err(ParseError::Help(_))));
+    }
+
+    #[test]
+    fn parse_args_rejects_extra_positional_argument() {
+        let args = vec![
+            "imgcrop".to_string(),
+            "input.jpg".to_string(),
+            "other.jpg".to_string(),
+            "--size".to_string(),
+            "800x600".to_string(),
+        ];
+
+        let parsed = parse_args(args);
+        assert!(matches!(parsed, Err(ParseError::Message(_))));
     }
 }

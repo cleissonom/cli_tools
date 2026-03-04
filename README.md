@@ -90,7 +90,7 @@ imgconvert ./photo.jpg webp ./out/photo.webp
 `imgcrop`:
 
 ```bash
-imgcrop --size 800x600 --input ./photo.jpg
+imgcrop ./photo.jpg --size 800x600
 ```
 
 `pypaste`:
