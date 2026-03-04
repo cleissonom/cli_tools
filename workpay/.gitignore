@@ -1,1 +1,5 @@
 workpay
+test_cli
+test_money
+test_parse
+test_quota
