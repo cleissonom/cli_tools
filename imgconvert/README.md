@@ -60,10 +60,11 @@ make test
 This project follows the same root workflow as other tools in this repository:
 
 ```bash
+cd .scripts
 ./build_all.sh && ./add_to_local.sh -y
 ```
 
-`build_all.sh` runs `make build` in each project directory, and `add_to_local.sh` installs each project executable from `<project>/<project>` into your local bin path.
+`./build_all.sh` runs `make build` in each project directory, and `./add_to_local.sh` installs each project executable from `<project>/<project>` into your local bin path.
 
 ## License
 
