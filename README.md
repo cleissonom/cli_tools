@@ -7,12 +7,14 @@ A multi-language set of focused command-line tools for everyday workflows.
 | Tool | Language | What it does | Build | Test |
 | --- | --- | --- | --- | --- |
 | `imgconvert` | Rust | Converts images to a target format with safe output-path validation. | `cd imgconvert && make build` | `cd imgconvert && make test` |
+| `imgcrop` | Rust | Crops images to exact dimensions with optional proportion/framing controls. | `cd imgcrop && make build` | `cd imgcrop && make test` |
 | `pypaste` | Rust | Compacts Python scripts for terminal pasting and copies output to clipboard. | `cd pypaste && make build` | `cd pypaste && make test` |
 | `raw_http` | C (libcurl) | Sends raw HTTP requests from `.txt` files and prints/saves full responses. | `cd raw_http && make build` | `cd raw_http && make test` |
 | `workpay` | C (libcurl) | Calculates earnings from worked time and converts currencies via AwesomeAPI. | `cd workpay && make build` | `N/A` (no `test` target in `Makefile`) |
 
 Detailed per-tool docs:
 - [imgconvert/README.md](imgconvert/README.md)
+- [imgcrop/README.md](imgcrop/README.md)
 - [pypaste/README.md](pypaste/README.md)
 - [raw_http/README.md](raw_http/README.md)
 - [workpay/README.md](workpay/README.md)
@@ -22,7 +24,7 @@ Detailed per-tool docs:
 ### macOS
 - Xcode Command Line Tools (`clang`, `make`, `install`)
 - `curl`, `tar`
-- Rust toolchain (`cargo`, `rustc`) for Rust tools (`imgconvert`, `pypaste`)
+- Rust toolchain (`cargo`, `rustc`) for Rust tools (`imgconvert`, `imgcrop`, `pypaste`)
 
 Quick setup with Homebrew:
 
@@ -62,7 +64,7 @@ Install only selected tools into a user-local bin directory:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/cleissonom/cli_tools/main/install-macos.sh | \
-  bash -s -- -y --tools imgconvert,pypaste
+  bash -s -- -y --tools imgcrop,pypaste
 ```
 
 Installer behavior:
@@ -83,6 +85,12 @@ bash install-macos.sh --help
 
 ```bash
 imgconvert ./photo.jpg webp ./out/photo.webp
+```
+
+`imgcrop`:
+
+```bash
+imgcrop --size 800x600 --input ./photo.jpg
 ```
 
 `pypaste`:
@@ -109,6 +117,7 @@ workpay --from USD --to BRL 25 08:30:45
 .
 ├── .scripts/      # helper scripts (test orchestration and local install utilities)
 ├── imgconvert/    # Rust image converter
+├── imgcrop/       # Rust image cropper with framing controls
 ├── pypaste/       # Rust python compactor + clipboard integration
 ├── raw_http/      # C raw HTTP request sender using libcurl
 └── workpay/       # C earnings + currency conversion CLI
