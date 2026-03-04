@@ -129,7 +129,10 @@ for cmd in curl tar make install; do
   command_exists "$cmd" || fail "required command not found: $cmd"
 done
 
-mapfile -t SELECTED_TOOLS < <(parse_tools_csv "$TOOLS_CSV")
+SELECTED_TOOLS=()
+while IFS= read -r tool; do
+  SELECTED_TOOLS+=("$tool")
+done < <(parse_tools_csv "$TOOLS_CSV")
 
 NEEDS_RUST=0
 NEEDS_CC=0
