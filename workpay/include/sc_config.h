@@ -8,7 +8,7 @@
 #define REQUEST_CONNECT_TIMEOUT_MS 5000L
 #define REQUEST_TIMEOUT_MS 10000L
 #define API_DAILY_REQUEST_LIMIT 100
-#define API_USAGE_FILE_NAME ".salary_calculator_api_usage"
+#define API_USAGE_FILE_NAME ".workpay_api_usage"
 
 extern const char *BLUE;
 extern const char *YELLOW;

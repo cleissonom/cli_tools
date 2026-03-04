@@ -1,8 +1,8 @@
-# Salary Calculator
+# Workpay
 
 ## Overview
 
-`salary_calculator` computes payment from an hourly rate and worked time (`HH:MM:SS`), then converts the result between currencies using AwesomeAPI exchange rates.
+`workpay` computes payment from an hourly rate and worked time (`HH:MM:SS`), then converts the result between currencies using AwesomeAPI exchange rates.
 
 ## Features
 
@@ -38,7 +38,7 @@ The tool is split into focused modules under `src/` with public contracts in `in
 ## Usage
 
 ```bash
-./salary_calculator [--from CODE] [--to CODE] <hourly_rate> <hours:minutes:seconds>
+./workpay [--from CODE] [--to CODE] <hourly_rate> <hours:minutes:seconds>
 ```
 
 ### Arguments
@@ -90,16 +90,16 @@ In this case, execution stops immediately.
 
 Usage tracking storage:
 
-- Default file: `~/.salary_calculator_api_usage`
-- Optional override env var: `SALARY_CALCULATOR_USAGE_FILE`
+- Default file: `~/.workpay_api_usage`
+- Optional override env var: `WORKPAY_USAGE_FILE`
 
 ## Examples
 
 ```bash
-./salary_calculator 25 08:30:45
-./salary_calculator --from EUR --to USD 40 07:15:00
-./salary_calculator --from BTC --to BRL 0.005 01:00:00
-./salary_calculator --from=BRL --to=EUR 35 06:45:30
+./workpay 25 08:30:45
+./workpay --from EUR --to USD 40 07:15:00
+./workpay --from BTC --to BRL 0.005 01:00:00
+./workpay --from=BRL --to=EUR 35 06:45:30
 ```
 
 Example output (USD -> BRL):

@@ -9,7 +9,7 @@ Output target modes:
 - With output file: writes the complete response (headers + body) to a file.
 - Without output file: prints the complete response (headers + body) to console (`stdout`).
 
-The project now follows a modular layout similar to `salary_calculator`:
+The project now follows a modular layout similar to `workpay`:
 
 - `include/` for module contracts
 - `src/` for implementations

@@ -11,7 +11,7 @@
 static int
 get_api_usage_file_path (char *output_path, size_t output_path_size)
 {
-  const char *custom_file_path = getenv ("SALARY_CALCULATOR_USAGE_FILE");
+  const char *custom_file_path = getenv ("WORKPAY_USAGE_FILE");
   const char *home_directory;
   int written_chars;
 
