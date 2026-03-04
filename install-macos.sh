@@ -8,7 +8,7 @@ PREFIX="/usr/local/bin"
 TOOLS_CSV="all"
 YES=0
 
-AVAILABLE_TOOLS=(imgconvert pypaste raw_http workpay)
+AVAILABLE_TOOLS=(imgconvert imgcrop pypaste raw_http workpay)
 
 print_help() {
   cat <<'USAGE'
@@ -27,7 +27,7 @@ Options:
 
 Examples:
   install-macos.sh
-  install-macos.sh --tools imgconvert,pypaste --prefix "$HOME/.local/bin"
+  install-macos.sh --tools imgcrop,pypaste --prefix "$HOME/.local/bin"
   install-macos.sh --repo cleissonom/cli_tools --ref main -y
 USAGE
 }
@@ -138,7 +138,7 @@ NEEDS_RUST=0
 NEEDS_CC=0
 for tool in "${SELECTED_TOOLS[@]}"; do
   case "$tool" in
-    imgconvert|pypaste)
+    imgconvert|imgcrop|pypaste)
       NEEDS_RUST=1
       ;;
     raw_http|workpay)
