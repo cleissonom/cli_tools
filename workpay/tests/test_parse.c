@@ -55,12 +55,34 @@ test_parse_hourly_rate (void)
   assert (!parse_hourly_rate ("12.4x", &value));
 }
 
+static void
+test_parse_date_ymd (void)
+{
+  int year = 0;
+  int month = 0;
+  int day = 0;
+
+  assert (parse_date_ymd ("2026-03-04", &year, &month, &day));
+  assert (year == 2026);
+  assert (month == 3);
+  assert (day == 4);
+
+  assert (parse_date_ymd ("2024-02-29", &year, &month, &day));
+  assert (!parse_date_ymd ("2025-02-29", &year, &month, &day));
+  assert (!parse_date_ymd ("2026-13-01", &year, &month, &day));
+  assert (!parse_date_ymd ("2026-00-01", &year, &month, &day));
+  assert (!parse_date_ymd ("2026-01-32", &year, &month, &day));
+  assert (!parse_date_ymd ("20260304", &year, &month, &day));
+  assert (!parse_date_ymd ("2026-3-04", &year, &month, &day));
+}
+
 int
 main (void)
 {
   test_normalize_currency_code ();
   test_parse_time ();
   test_parse_hourly_rate ();
+  test_parse_date_ymd ();
 
   printf ("All workpay parse tests passed.\n");
   return 0;

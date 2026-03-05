@@ -1,5 +1,8 @@
 workpay
-test_cli
-test_money
 test_parse
+test_money
+test_cli
 test_quota
+test_report_store
+test_report_query
+test_report_export

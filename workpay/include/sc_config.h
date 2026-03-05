@@ -9,6 +9,7 @@
 #define REQUEST_TIMEOUT_MS 10000L
 #define API_DAILY_REQUEST_LIMIT 100
 #define API_USAGE_FILE_NAME ".workpay_api_usage"
+#define ENTRIES_FILE_NAME ".workpay_entries"
 
 extern const char *BLUE;
 extern const char *YELLOW;

@@ -2,125 +2,120 @@
 
 ## Overview
 
-`workpay` computes payment from an hourly rate and worked time (`HH:MM:SS`), then converts the result between currencies using AwesomeAPI exchange rates.
+`workpay` computes earnings from worked time and hourly rate, converts values with AwesomeAPI exchange rates, and can persist successful calculations to CSV for reporting.
 
 ## Features
 
-- Help and usage output with `-h` / `--help`
-- Strict input validation for hourly rate and time format
-- Dynamic currency conversion with `--from` and `--to`
-- Currency pair validation against AwesomeAPI supported pairs
-- `Total earned` output formatted with currency symbol, thousands separators, and 2 decimal places
+- Calculation mode with strict input validation
+- Currency conversion with `--from` and `--to`
+- Optional persistence with `--save` and optional `--tag`
+- Report mode with `summary`, `list`, and `export`
+- CSV storage with fixed schema and env var override
+- CSV/JSON exports for filtered report data
 
 ## Prerequisites
 
 - GCC (GNU Compiler Collection)
 - libcurl
 
-## Build
+## Build and Test
 
 ```bash
 make build
+make test
 ```
 
-## Project Structure
-
-The tool is split into focused modules under `src/` with public contracts in `include/`:
-
-- `src/main.c`: Application orchestration and output rendering
-- `src/sc_cli.c`: Help text and CLI argument parsing
-- `src/sc_parse.c`: Input parsing and normalization helpers
-- `src/sc_money.c`: Payment calculation and currency formatting
-- `src/sc_quota.c`: Daily API quota tracking
-- `src/sc_api.c`: HTTP requests, pair validation, and exchange rate retrieval
-- `src/sc_config.c`: Shared visual constants (output colors)
-
-## Usage
+## CLI Usage
 
 ```bash
-./workpay [--from CODE] [--to CODE] <hourly_rate> <hours:minutes:seconds>
+./workpay [--from CODE] [--to CODE] [--save] [--tag TAG] [--save-date DATE] [--exchange-rate RATE] [--extra-from AMOUNT] <hourly_rate> <hours:minutes:seconds>
+./workpay report summary [--from-date YYYY-MM-DD] [--to-date YYYY-MM-DD] [--from CODE] [--to CODE]
+./workpay report list [--from-date YYYY-MM-DD] [--to-date YYYY-MM-DD] [--from CODE] [--to CODE] [--limit N]
+./workpay report export --format csv|json --output <PATH> [--from-date YYYY-MM-DD] [--to-date YYYY-MM-DD] [--from CODE] [--to CODE]
 ```
+
+## Calculation Mode
 
 ### Arguments
 
-- `<hourly_rate>`: Non-negative decimal number
-- `<hours:minutes:seconds>`: Time worked in `HH:MM:SS` where `MM` and `SS` are between `00` and `59`
+- `<hourly_rate>`: non-negative decimal number
+- `<hours:minutes:seconds>`: `HH:MM:SS` with `MM` and `SS` in `00..59`
 
-### Options
+### Flags
 
-- `-h`, `--help`: Show help message
-- `--from CODE`: Source currency code (default: `USD`)
-- `--to CODE`: Target currency code (default: `BRL`)
+- `--from CODE`: source currency (default: `USD`)
+- `--to CODE`: target currency (default: `BRL`)
+- `--save`: save a successful calculation entry
+- `--tag TAG`: optional tag for saved entries (requires `--save`)
+- `--save-date DATE`: override saved timestamp (requires `--save`), accepted formats:
+  - `YYYY-MM-DD` (saved as midnight local time)
+  - `YYYY-MM-DDTHH:MM:SS`
+- `--exchange-rate RATE`: required when using `--save-date`; uses provided rate instead of current API rate
+- `--extra-from AMOUNT`: extra earnings in the source currency added before conversion
 
-Both `--from EUR` and `--from=EUR` styles are supported.
-
-## Currency Pair Validation
-
-The tool validates `FROM-TO` against AwesomeAPI available pairs before fetching rates.
-
-- Supported pairs source: `https://economia.awesomeapi.com.br/json/available`
-- Rate endpoint used by the tool: `https://economia.awesomeapi.com.br/json/last/FROM-TO`
-
-If the pair is not supported, the tool returns an error such as:
-
-```text
-Unsupported currency pair: XXX-YYY
-```
-
-## Daily API Limit Tracking
-
-AwesomeAPI has a daily request limit of `100` requests. The tool tracks usage per day and enforces this limit before each API request.
-
-Warnings shown when remaining quota is low:
-
-```text
-25 requests remaining
-10 requests remaining
-5 requests remaining
-1 requests remaining
-```
-
-When the limit is reached:
-
-```text
-Requests limit reached
-```
-
-In this case, execution stops immediately.
-
-Usage tracking storage:
-
-- Default file: `~/.workpay_api_usage`
-- Optional override env var: `WORKPAY_USAGE_FILE`
-
-## Examples
+### Calculation Examples
 
 ```bash
 ./workpay 25 08:30:45
 ./workpay --from EUR --to USD 40 07:15:00
-./workpay --from BTC --to BRL 0.005 01:00:00
-./workpay --from=BRL --to=EUR 35 06:45:30
+./workpay --from BTC --to BRL --save --tag invoice-42 0.005 01:00:00
+./workpay --save --save-date 2026-03-01 --exchange-rate 5.10 --tag retro-entry 25 08:30:45
+./workpay --from USD --to BRL --extra-from 120 23 154:22:12
 ```
 
-Example output (USD -> BRL):
+## Report Mode
+
+### `report summary`
+
+Aggregates filtered entries by currency pair (`from_currency` + `to_currency`) to avoid mixing totals across different currencies.
+
+```bash
+./workpay report summary
+./workpay report summary --from-date 2026-01-01 --to-date 2026-01-31
+./workpay report summary --from USD --to BRL
+```
+
+### `report list`
+
+Displays filtered entries in stable tabular form.
+
+```bash
+./workpay report list
+./workpay report list --from-date 2026-01-01 --to-date 2026-01-31 --limit 20
+./workpay report list --from USD --to BRL
+```
+
+### `report export`
+
+Exports filtered entries to CSV or JSON. `--format` and `--output` are required.
+
+```bash
+./workpay report export --format csv --output /tmp/workpay.csv
+./workpay report export --format json --output /tmp/workpay.json --from USD --to BRL
+```
+
+## Storage
+
+Saved entries use append-only CSV storage.
+
+- Default entries file: `~/.workpay_entries`
+- Override env var: `WORKPAY_ENTRIES_FILE`
+- API usage quota file (existing behavior): `~/.workpay_api_usage`
+- API usage override env var: `WORKPAY_USAGE_FILE`
+
+## CSV Schema
+
+Header and column order are fixed:
 
 ```text
-Total earned in USD: $3,680.00
-Total earned in BRL: R$ 19.483,39
+entry_id,created_at,from_currency,to_currency,hourly_rate,hours,minutes,seconds,total_from_currency,exchange_rate,total_to_currency,tag
 ```
 
-Example output (BRL -> USD):
+Field notes:
 
-```text
-Total earned in BRL: R$ 3.680,00
-Total earned in USD: $691.01
-```
-
-Formatting notes:
-
-- Total earned lines are always rounded to 2 decimal places.
-- Symbol and separators follow the selected currency when known.
-- For unknown currency codes, fallback format is `1,234.56 CODE`.
+- `entry_id`: Unix epoch timestamp (seconds)
+- `created_at`: local datetime in `YYYY-MM-DDTHH:MM:SS`
+- `tag`: optional, empty string when omitted
 
 ## Common Errors
 
@@ -130,36 +125,73 @@ Formatting notes:
 Invalid hourly rate. Use a non-negative number.
 ```
 
-- Invalid time format:
+- Invalid time:
 
 ```text
 Invalid time format. Use HH:MM:SS with MM/SS between 00 and 59.
 ```
 
-- Invalid currency code format:
+- Invalid date flag value:
 
 ```text
-Invalid value for --from. Use only letters and digits (example: USD, BRL, BRLT, BTC).
+Invalid value for --from-date. Use YYYY-MM-DD.
 ```
 
-- Unsupported pair:
+- Invalid save date:
 
 ```text
-Unsupported currency pair: FROM-TO
+Invalid value for --save-date. Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS.
 ```
 
-- Daily quota reached:
+- Invalid extra amount:
 
 ```text
-Requests limit reached
+Invalid value for --extra-from. Use a non-negative number.
+```
+
+- Missing required historical rate with save date:
+
+```text
+--exchange-rate is required when --save-date is provided.
+```
+
+- Invalid date range:
+
+```text
+Invalid date range: --from-date is after --to-date.
+```
+
+- Invalid limit:
+
+```text
+Invalid value for --limit. Use a positive integer.
+```
+
+- Missing export output path:
+
+```text
+Missing required option --output for report export.
+```
+
+- Empty filtered dataset:
+
+```text
+No entries found for the selected filters.
+```
+
+- Entries storage read/write failures:
+
+```text
+Failed to open entries file for writing: <path>
+Failed to open entries file for reading: <path>
 ```
 
 ## Notes
 
-- The hourly rate is interpreted in the `--from` currency.
-- Network access is required to validate pairs and fetch exchange rates.
-- API request quota is tracked per local day (`YYYY-MM-DD`) and resets automatically on the next day.
-- API provider: [AwesomeAPI](https://docs.awesomeapi.com.br/api-de-moedas)
+- Existing calculation behavior is unchanged when `--save` is not used.
+- Save happens only after successful calculation and exchange-rate resolution (API or `--exchange-rate`).
+- Network access is required for calculation mode (AwesomeAPI).
+- Report mode reads only local saved entries and does not call AwesomeAPI.
 
 ## License
 

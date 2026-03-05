@@ -6,5 +6,6 @@
 int normalize_currency_code (const char *input, char *output, size_t output_size);
 int parse_time (const char *time_str, int *hours, int *minutes, int *seconds);
 int parse_hourly_rate (const char *hourly_rate_str, double *hourly_rate);
+int parse_date_ymd (const char *date_str, int *year, int *month, int *day);
 
 #endif
