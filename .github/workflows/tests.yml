@@ -14,11 +14,16 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - name: Install C dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev
+          sudo apt-get install -y libcurl4-openssl-dev shellcheck
+
+      - name: Run all lint checks
+        run: ./.scripts/lint_all.sh
 
       - name: Build all tools
         run: ./.scripts/build_all.sh
