@@ -154,7 +154,7 @@ fn is_code_anchor(line: &LineInfo) -> bool {
 }
 
 fn trim_trailing_spaces_tabs(line: &str) -> &str {
-    line.trim_end_matches(|ch| ch == ' ' || ch == '\t')
+    line.trim_end_matches([' ', '\t'])
 }
 
 fn indentation_columns(line: &str) -> usize {

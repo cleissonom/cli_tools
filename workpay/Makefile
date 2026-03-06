@@ -1,5 +1,5 @@
 CC = gcc
-CPPFLAGS = -Iinclude
+CPPFLAGS = -Iinclude -D_POSIX_C_SOURCE=200809L
 CFLAGS = -Wall -Wextra -Wpedantic -std=c11
 LDLIBS = -lcurl -lm
 SRC = src/main.c src/sc_parse.c src/sc_money.c src/sc_cli.c src/sc_quota.c src/sc_api.c src/sc_config.c src/sc_report_store.c src/sc_report_query.c src/sc_report_render.c

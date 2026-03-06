@@ -77,9 +77,15 @@ run_shell_lint() {
         return
     fi
 
-    while IFS= read -r file; do
-        sh_files+=("$file")
-    done < <(rg --files -g '*.sh')
+    if command -v rg >/dev/null 2>&1; then
+        while IFS= read -r file; do
+            sh_files+=("$file")
+        done < <(rg --files -g '*.sh')
+    else
+        while IFS= read -r file; do
+            sh_files+=("$file")
+        done < <(find . -type d \( -name .git -o -name target \) -prune -o -type f -name '*.sh' -print)
+    fi
 
     if [ "${#sh_files[@]}" -eq 0 ]; then
         echo "Skipping shell lint: no .sh files found"

@@ -476,13 +476,14 @@ parse_entry_line (const char *line, struct ReportEntry *entry)
       return 0;
     }
 
-  if (strlen (fields[11]) >= sizeof (entry->tag))
+  if (strlen (fields[1]) >= sizeof (entry->created_at)
+      || strlen (fields[11]) >= sizeof (entry->tag))
     {
       return 0;
     }
 
-  snprintf (entry->created_at, sizeof (entry->created_at), "%s", fields[1]);
-  snprintf (entry->tag, sizeof (entry->tag), "%s", fields[11]);
+  strcpy (entry->created_at, fields[1]);
+  strcpy (entry->tag, fields[11]);
   return 1;
 }
 

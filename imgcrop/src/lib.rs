@@ -387,16 +387,12 @@ fn cover_dimensions(
     let th = u128::from(target_height);
 
     if sw * th >= sh * tw {
-        let resize_width = div_ceil(sw * th, sh) as u32;
+        let resize_width = (sw * th).div_ceil(sh) as u32;
         (resize_width, target_height)
     } else {
-        let resize_height = div_ceil(sh * tw, sw) as u32;
+        let resize_height = (sh * tw).div_ceil(sw) as u32;
         (target_width, resize_height)
     }
-}
-
-fn div_ceil(numerator: u128, denominator: u128) -> u128 {
-    (numerator + denominator - 1) / denominator
 }
 
 fn horizontal_offset(current_width: u32, target_width: u32, frame: HorizontalFrame) -> u32 {

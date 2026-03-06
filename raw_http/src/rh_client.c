@@ -14,7 +14,9 @@ rh_normalize_host (HttpRequest *request)
       && strncmp (request->host, "https://", 8) != 0)
     {
       char temp_host[RH_HOST_SIZE];
-      snprintf (temp_host, sizeof (temp_host), "http://%s", request->host);
+      size_t max_host_length = sizeof (temp_host) - sizeof ("http://");
+      snprintf (temp_host, sizeof (temp_host), "http://%.*s",
+                (int)max_host_length, request->host);
       strncpy (request->host, temp_host, sizeof (request->host) - 1);
       request->host[sizeof (request->host) - 1] = '\0';
     }
